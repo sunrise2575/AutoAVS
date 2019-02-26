@@ -1,0 +1,23 @@
+{
+	"map":
+		{
+			"video":"0",
+			"audio":"0"
+		},
+	"video_encoding":"no",
+	"v":
+		{
+			"c":"hevc_nvenc",
+			"pix_fmt":"yuv420p",
+			"profile":"main",
+			"level":"auto",
+			"preset":"hq",
+			"qp":"25"
+		},
+	"audio_encoding":"yes",
+	"a":
+		{
+			"c":"aac",
+			"b":"192k"
+		}
+}
