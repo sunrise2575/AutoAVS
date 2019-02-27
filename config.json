@@ -4,7 +4,7 @@
 			"video":"0",
 			"audio":"0"
 		},
-	"video_encoding":"no",
+	"video_encoding":"yes",
 	"v":
 		{
 			"c":"hevc_nvenc",

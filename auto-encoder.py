@@ -3,21 +3,23 @@ import sys
 import glob
 import json
 import subprocess
+import termcolor 
 
 import asyncio
 import aiofiles
 import time
 
-def log(gpu, gpu_stream, infile, outfile, act):
+def log(gpu, gpu_stream, infile, outfile, act, color):
     now = time.localtime()
     s = "%04d-%02d-%02d %02d:%02d:%02d" % (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec)
-    print('[GPU ' + str(gpu) + '-' + str(gpu_stream) + '][' + s + '] ' + act + " '" + infile + "'" + ' -> ' + "'" + outfile + "'")
+    termcolor.cprint('[GPU ' + str(gpu) + '-' + str(gpu_stream) + '][' + s + '] ' + act + " '" + infile + "'" + ' -> ' + "'" + outfile + "'", color)
 
 
 async def ffmpeg(infile, outfile, conf, gpu):
     arg = ['ffmpeg']
     arg += ['-hide_banner', '-loglevel', 'warning', '-y']
     arg += ['-threads', '0', '-thread_type', 'frame']
+    arg += ['-analyzeduration', '2147483647','-probesize','2147483647']
     arg += ['-i', infile]
     arg += ['-threads', '0', '-max_muxing_queue_size', '1024']
     arg += ['-map', '0:v:' + conf['map']['video'], '-map', '0:a:' + conf['map']['audio']]
@@ -37,10 +39,10 @@ async def ffmpeg(infile, outfile, conf, gpu):
     else :
         arg += ['-c:a','copy']
 
+
     arg += [outfile]
     #print(''.join(i + ' ' for i in arg))
 
-    '''
     proc = await asyncio.create_subprocess_exec(*arg, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     await proc.wait()
 
@@ -48,11 +50,10 @@ async def ffmpeg(infile, outfile, conf, gpu):
 
     #print(f'[{arg!r} exited with {proc.returncode}]')
     if out:
-        #print(f'[stdout]\n{out.decode()}')
+        termcolor.cprint(f'[stdout]\n{out.decode()}\n','cyan')
     if err:
-        #print(f'[stderr]\n{err.decode()}')
+        termcolor.cprint(f'[stderr]\n{err.decode()}\n','yellow')
         raise 1
-    '''
 
 async def producer(q):
     origin = sys.argv[1]
@@ -90,13 +91,14 @@ async def encoding(q, gpu, gpu_stream):
             continue 
 
         try:
-            log(gpu, gpu_stream, infile, outfile, 'START ')
+            log(gpu, gpu_stream, infile, outfile, 'START ', 'white')
             result = await ffmpeg(infile, outfile, conf, gpu)
         except:
-            log(gpu, gpu_stream, infile, outfile, 'FAILED')
+            log(gpu, gpu_stream, infile, outfile, 'FAILED', 'red')
+            q.task_done()
             continue
 
-        log(gpu, gpu_stream, infile, outfile, 'FINISH')
+        log(gpu, gpu_stream, infile, outfile, 'FINISH', 'green')
         q.task_done()
 
 async def main():
