@@ -59,7 +59,7 @@ async def ffmpeg(path, ext, conf, gpu):
 
 async def ffmpeg_split(path, ext, conf, gpu):
     if conf['video_encoding'] != 'yes' or conf['audio_encoding'] != 'yes':
-        return
+        raise 1
 
     # filename
     infile = path
@@ -94,6 +94,14 @@ async def ffmpeg_split(path, ext, conf, gpu):
         
     arg_a += [outfile_a]
 
+    #print(''.join(i + ' ' for i in arg_v))
+    #print(''.join(i + ' ' for i in arg_a))
+
+    def _remove_intermediate(_v, _a):
+        if os.path.exists(_v) == True:
+            os.remove(_v)
+        if os.path.exists(_a) == True:
+            os.remove(_a)
 
     # split encoding
     proc_v = await asyncio.create_subprocess_exec(*arg_v, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -106,15 +114,17 @@ async def ffmpeg_split(path, ext, conf, gpu):
     await proc_a.wait()
 
     if out_v:
-        termcolor.cprint(f'[stdout_video]\n{out.decode()}\n','cyan')
+        termcolor.cprint(f'[stdout_video]\n{out_v.decode()}\n','cyan')
     if err_v:
-        termcolor.cprint(f'[stderr_video]\n{err.decode()}\n','yellow')
+        _remove_intermediate(outfile_v, outfile_a)
+        termcolor.cprint(f'[stdout_video]\n{err_v.decode()}\n','yellow')
         raise 1
 
     if out_a:
-        termcolor.cprint(f'[stdout_audio]\n{out.decode()}\n','cyan')
+        termcolor.cprint(f'[stdout_audio]\n{out_a.decode()}\n','cyan')
     if err_a:
-        termcolor.cprint(f'[stderr_audio]\n{err.decode()}\n','yellow')
+        _remove_intermediate(outfile_v, outfile_a)
+        termcolor.cprint(f'[stderr_audio]\n{err_a.decode()}\n','yellow')
         raise 1
 
     # merge
@@ -131,15 +141,20 @@ async def ffmpeg_split(path, ext, conf, gpu):
     await proc_m.wait()
 
     if out_m:
-        termcolor.cprint(f'[stdout_merge]\n{out.decode()}\n','cyan')
+        termcolor.cprint(f'[stdout_merge]\n{out_m.decode()}\n','cyan')
     if err_m:
-        termcolor.cprint(f'[stderr_merge]\n{err.decode()}\n','yellow')
+        _remove_intermediate(outfile_v, outfile_a)
+        termcolor.cprint(f'[stderr_merge]\n{err_m.decode()}\n','yellow')
         raise 1
 
     # delete intermediate file
-    os.remove(outfile_v)
-    os.remove(outfile_a)
-    os.rename(outfile_m, outfile_v)
+    _remove_intermediate(outfile_v, outfile_a)
+
+    # rename final file
+    if os.path.exists(outfile_m) == True:
+        os.rename(outfile_m, outfile_v)
+    else:
+        raise 1
 
 async def producer(q):
     origin = sys.argv[1]
@@ -176,24 +191,30 @@ async def encoding(q, gpu, gpu_stream):
         except:
             continue 
 
-        # start encoding
+        # start split encoding
         try:
-            log(gpu, gpu_stream, path, 'START ', 'white')
-            result = await ffmpeg_split(path, ext, conf, gpu)
+            log(gpu, gpu_stream, path, 'START  ', 'white')
+            await ffmpeg_split(path, ext, conf, gpu)
         except:
-            log(gpu, gpu_stream, path, 'FAILED', 'red')
-            q.task_done()
-            continue
+            # Try original encoding
+            try:
+                log(gpu, gpu_stream, path, 'RESTART', 'cyan')
+                await ffmpeg(path, ext, conf, gpu)
+            except:
+                # on failure
+                log(gpu, gpu_stream, path, 'FAILED ', 'red')
+                q.task_done()
+                continue
 
-        log(gpu, gpu_stream, path, 'FINISH', 'green')
+        log(gpu, gpu_stream, path, 'FINISH ', 'green')
         q.task_done()
 
 async def main():
     q = asyncio.Queue()
 
     gpu0_0 = asyncio.ensure_future(encoding(q, 0, 0))
-    gpu0_1 = asyncio.ensure_future(encoding(q, 0, 1))
     gpu1_0 = asyncio.ensure_future(encoding(q, 1, 0))
+    gpu0_1 = asyncio.ensure_future(encoding(q, 0, 1))
     gpu1_1 = asyncio.ensure_future(encoding(q, 1, 1))
 
     await producer(q)
