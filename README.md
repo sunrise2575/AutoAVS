@@ -5,9 +5,7 @@ This project is experimental now. Please be generous for encoding failure.
 
 ## Requirements
 ### Related to Language 
-- Python 3.5 (or more)
-- aiofiles(https://github.com/Tinche/aiofiles)
-- termcolor(https://pypi.org/project/termcolor/)
+- go
 
 ### Related to GPU
 - NVIDIA graphics driver (you should see the result of `nvidia-smi` command)
@@ -20,5 +18,6 @@ This project is experimental now. Please be generous for encoding failure.
 2. The directory can be multiple. This program recursively found `config.json` and video files.
 3. Type command:
 ```bash
-python3 auto-encoder.py [a root directory of video file directories]
+go build main.go
+./main -r [a root directory of video file directories]
 ```

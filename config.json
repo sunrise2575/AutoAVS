@@ -1,12 +1,14 @@
 {
-	"map":
-		{
-			"video":"0",
-			"audio":"0"
-		},
-	"video_encoding":"yes",
-	"v":
-		{
+	"encode": {
+		"video":true,
+		"audio":true
+	},
+	"mapping":{
+		"video":"0",
+		"audio":"0"
+	},
+	"setting": {
+		"video": {
 			"c":"hevc_nvenc",
 			"pix_fmt":"yuv420p",
 			"profile":"main",
@@ -14,10 +16,9 @@
 			"preset":"hq",
 			"qp":"25"
 		},
-	"audio_encoding":"yes",
-	"a":
-		{
+		"audio": {
 			"c":"aac",
 			"b":"192k"
 		}
+	}
 }
