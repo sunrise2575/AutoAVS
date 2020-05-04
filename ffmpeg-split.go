@@ -35,6 +35,15 @@ func mergeErrorChan(cs ...<-chan error) <-chan error {
 }
 
 func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error {
+	streamCtx, e := selectStream(inFilePath)
+	if e != nil {
+		return e
+	}
+
+	shouldEncodeVideo, shouldEncodeAudio :=
+		ctxBool(streamCtx, "should_encode_video"), ctxBool(streamCtx, "should_encode_audio")
+	vStreamIdx, aStreamIdx :=
+		ctxInt(streamCtx, "video_stream_index"), ctxInt(streamCtx, "audio_stream_index")
 
 	_, inFileName := filepath.Split(inFilePath)
 	inFileExt := filepath.Ext(inFilePath)
@@ -76,17 +85,17 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 			argsVideo := []string{}
 			copy(argsVideo, argsCommon)
 
-			gjson.GetBytes(bson, "mapping.video").ForEach(func(k, v gjson.Result) bool {
-				argsVideo = append(argsVideo, []string{"-map", "0:v:" + v.String()}...)
-				return true
-			})
+			argsVideo = append(argsVideo, "-map", "0:"+strconv.Itoa(vStreamIdx))
 
-			argsVideo = append(argsVideo, []string{"-gpu", strconv.Itoa(gpuID)}...)
-
-			gjson.GetBytes(bson, "setting.video").ForEach(func(k, v gjson.Result) bool {
-				argsVideo = append(argsVideo, []string{"-" + k.String() + ":v", v.String()}...)
-				return true
-			})
+			if shouldEncodeVideo {
+				argsVideo = append(argsVideo, []string{"-gpu", strconv.Itoa(gpuID)}...)
+				gjson.GetBytes(bson, "video").ForEach(func(k, v gjson.Result) bool {
+					argsVideo = append(argsVideo, []string{"-" + k.String() + ":v", v.String()}...)
+					return true
+				})
+			} else {
+				argsVideo = append(argsVideo, []string{"-c:v", "copy"}...)
+			}
 
 			argsVideo = append(argsVideo, "-an")
 			argsVideo = append(argsVideo, outFilePathVideo)
@@ -111,15 +120,16 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 			argsAudio := []string{}
 			copy(argsAudio, argsCommon)
 
-			gjson.GetBytes(bson, "mapping.audio").ForEach(func(k, v gjson.Result) bool {
-				argsAudio = append(argsAudio, []string{"-map", "0:a:" + v.String()}...)
-				return true
-			})
+			argsAudio = append(argsAudio, "-map", "0:"+strconv.Itoa(aStreamIdx))
 
-			gjson.GetBytes(bson, "setting.audio").ForEach(func(k, v gjson.Result) bool {
-				argsAudio = append(argsAudio, []string{"-" + k.String() + ":a", v.String()}...)
-				return true
-			})
+			if shouldEncodeAudio {
+				gjson.GetBytes(bson, "audio").ForEach(func(k, v gjson.Result) bool {
+					argsAudio = append(argsAudio, []string{"-" + k.String() + ":a", v.String()}...)
+					return true
+				})
+			} else {
+				argsAudio = append(argsAudio, []string{"-c:a", "copy"}...)
+			}
 
 			argsAudio = append(argsAudio, "-vn")
 			argsAudio = append(argsAudio, outFilePathAudio)
@@ -145,8 +155,12 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 	argsMerge := []string{
 		"-i", outFilePathVideo,
 		"-i", outFilePathAudio,
-		"-hide_banner", "-loglevel", "error", "-y",
-		"-c:v", "copy", "-c:a", "copy", outFilePathMerge}
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-c:v", "copy",
+		"-c:a", "copy",
+		outFilePathMerge}
 
 	cmd := exec.Command("ffmpeg", argsMerge...)
 	stdoutStderr, e := cmd.CombinedOutput()

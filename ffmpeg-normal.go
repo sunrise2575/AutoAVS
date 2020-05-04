@@ -12,6 +12,16 @@ import (
 )
 
 func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
+	streamCtx, e := selectStream(inFilePath)
+	if e != nil {
+		return e
+	}
+
+	shouldEncodeVideo, shouldEncodeAudio :=
+		ctxBool(streamCtx, "should_encode_video"), ctxBool(streamCtx, "should_encode_audio")
+	vStreamIdx, aStreamIdx :=
+		ctxInt(streamCtx, "video_stream_index"), ctxInt(streamCtx, "audio_stream_index")
+
 	_, inFileName := filepath.Split(inFilePath)
 	inFileExt := filepath.Ext(inFilePath)
 	inFileName = strings.TrimSuffix(inFileName, inFileExt)
@@ -40,19 +50,11 @@ func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
 		"-threads", "0",
 		"-max_muxing_queue_size", "1024"}
 
-	gjson.GetBytes(bson, "mapping.video").ForEach(func(k, v gjson.Result) bool {
-		args = append(args, []string{"-map", "0:v:" + v.String()}...)
-		return true
-	})
+	args = append(args, "-map", "0:"+strconv.Itoa(vStreamIdx), "-map", "0:"+strconv.Itoa(aStreamIdx))
 
-	gjson.GetBytes(bson, "mapping.audio").ForEach(func(k, v gjson.Result) bool {
-		args = append(args, []string{"-map", "0:a:" + v.String()}...)
-		return true
-	})
-
-	if gjson.GetBytes(bson, "encode.video").Bool() {
+	if shouldEncodeVideo {
 		args = append(args, []string{"-gpu", strconv.Itoa(gpuID)}...)
-		gjson.GetBytes(bson, "setting.video").ForEach(func(k, v gjson.Result) bool {
+		gjson.GetBytes(bson, "video").ForEach(func(k, v gjson.Result) bool {
 			args = append(args, []string{"-" + k.String() + ":v", v.String()}...)
 			return true
 		})
@@ -60,8 +62,8 @@ func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
 		args = append(args, []string{"-c:v", "copy"}...)
 	}
 
-	if gjson.GetBytes(bson, "encode.audio").Bool() {
-		gjson.GetBytes(bson, "setting.audio").ForEach(func(k, v gjson.Result) bool {
+	if shouldEncodeAudio {
+		gjson.GetBytes(bson, "audio").ForEach(func(k, v gjson.Result) bool {
 			args = append(args, []string{"-" + k.String() + ":a", v.String()}...)
 			return true
 		})

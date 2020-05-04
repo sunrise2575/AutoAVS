@@ -21,17 +21,20 @@ var (
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	// Flags
-	var rootFolder string
+	var rootFolder, configPath, lang string
 	var printVersion bool
 	var workersPerGPU int
-	flag.StringVar(&rootFolder, "r", "", "Root path for input files")
+
+	flag.StringVar(&rootFolder, "in", "", "Root path for input files")
+	flag.StringVar(&configPath, "config", "./config.json", "Config file path.")
 	flag.BoolVar(&printVersion, "v", false, "Print program version")
-	flag.IntVar(&workersPerGPU, "w", 2, "Workers per GPU. If you have good GPU, it's okay to raise this value up to 4~6. If you have normal GPU, just set this value within 2~3. Default value is 2")
+	flag.IntVar(&workersPerGPU, "workers", 2, "Workers per GPU. If you have good GPU, it's okay to raise this value up to 4~6. If you have normal GPU, just set this value within 2~3.")
+	flag.StringVar(&lang, "lang", "jpn", "Preferred audio/video language stream.")
 	flag.Parse()
 
 	if printVersion {
 		fmt.Println("Auto-encoder")
-		fmt.Println("Version: 1.1.0")
+		fmt.Println("Version: 1.2.0")
 		fmt.Println("Copyright 2020 Heeyong Yoon.")
 		fmt.Println("All Rights Reserved.")
 		os.Exit(0)
@@ -42,8 +45,6 @@ func init() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
-	ctx = context.WithValue(ctx, "input_root_folder_path", rootFolder)
 
 	pci, e := ghw.PCI()
 	if e != nil {
@@ -64,8 +65,10 @@ func init() {
 		}
 	}
 
+	ctx = context.WithValue(ctx, "input_root_folder_path", rootFolder)
+	ctx = context.WithValue(ctx, "config_path", configPath)
+	ctx = context.WithValue(ctx, "language", lang)
 	ctx = context.WithValue(ctx, "nvidia_gpu_count", nvidiaGPUs)
-
 	ctx = context.WithValue(ctx, "workers_per_gpu", workersPerGPU)
 }
 
@@ -76,39 +79,25 @@ func main() {
 		}
 	}()
 
-	// Load root folder path
-	var inRootFolder string
-	if v := ctx.Value("input_root_folder_path"); v != nil {
-		if u, ok := v.(string); !ok {
-			panic("context error")
-		} else {
-			var e error
-			if inRootFolder, e = filepath.Abs(u); e != nil {
-				panic(e)
-			}
-			if _, e = os.Stat(inRootFolder); os.IsNotExist(e) {
-				panic(e)
-			}
-		}
+	inRootFolder, e := filepath.Abs(ctxString(ctx, "input_root_folder_path"))
+	if e != nil {
+		panic(e)
+	}
+	if _, e = os.Stat(inRootFolder); os.IsNotExist(e) {
+		panic(e)
 	}
 
-	var gpuCount int
-	if v := ctx.Value("nvidia_gpu_count"); v != nil {
-		if u, ok := v.(int); !ok {
-			panic("context error")
-		} else {
-			gpuCount = u
-		}
+	configPath, e := filepath.Abs(ctxString(ctx, "config_path"))
+	if e != nil {
+		panic(e)
 	}
 
-	var workersPerGPU int
-	if v := ctx.Value("workers_per_gpu"); v != nil {
-		if u, ok := v.(int); !ok {
-			panic("context error")
-		} else {
-			workersPerGPU = u
-		}
+	if _, e = os.Stat(inRootFolder); os.IsNotExist(e) {
+		panic(e)
 	}
+
+	gpuCount := ctxInt(ctx, "nvidia_gpu_count")
+	workersPerGPU := ctxInt(ctx, "workers_per_gpu")
 
 	type fParam struct {
 		myInFilePath, myConfigPath, myOutFileDir string
@@ -142,23 +131,23 @@ func main() {
 						}
 
 						inFileDir, _ := filepath.Split(inFilePath)
-						configPath := filepath.Join(inFileDir, "config.json")
-						outFileDir := inFileDir
+						/*
+							configPath := filepath.Join(inFileDir, "config.json")
+							if _, e := os.Stat(configPath); os.IsNotExist(e) {
+								log.Println(inFilePath, e.Error(), "skip")
+								return nil
+							}
 
-						if _, e := os.Stat(configPath); os.IsNotExist(e) {
-							log.Println(inFilePath, e.Error(), "skip")
-							return nil
-						}
-
-						if _, e := os.Stat(outFileDir); os.IsNotExist(e) {
-							log.Println(outFileDir, e.Error(), "skip")
-							return nil
-						}
+							if _, e := os.Stat(outFileDir); os.IsNotExist(e) {
+								log.Println(outFileDir, e.Error(), "skip")
+								return nil
+							}
+						*/
 
 						result <- fParam{
 							myInFilePath: inFilePath,
 							myConfigPath: configPath,
-							myOutFileDir: outFileDir,
+							myOutFileDir: inFileDir,
 						}
 					}
 				}
@@ -187,9 +176,9 @@ func main() {
 					log.Println(myGPUID, p.myInFilePath, "start")
 
 					if e := runFFMPEG(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-						log.Println(myGPUID, p.myInFilePath, "retry")
+						log.Println(myGPUID, p.myInFilePath, "retry", e.Error())
 						if e := runFFMPEGsplit(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-							panic(fmt.Sprintln(myGPUID, p.myInFilePath, "fail"))
+							panic(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
 						}
 					}
 

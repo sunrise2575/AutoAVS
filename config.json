@@ -1,24 +1,14 @@
 {
-	"encode": {
-		"video":true,
-		"audio":true
+	"video": {
+		"c":"hevc_nvenc",
+		"pix_fmt":"yuv420p",
+		"profile":"main",
+		"level":"auto",
+		"preset":"hq",
+		"qp":"25"
 	},
-	"mapping":{
-		"video":"0",
-		"audio":"0"
-	},
-	"setting": {
-		"video": {
-			"c":"hevc_nvenc",
-			"pix_fmt":"yuv420p",
-			"profile":"main",
-			"level":"auto",
-			"preset":"hq",
-			"qp":"25"
-		},
-		"audio": {
-			"c":"aac",
-			"b":"192k"
-		}
+	"audio": {
+		"c":"aac",
+		"q":"1"
 	}
 }
