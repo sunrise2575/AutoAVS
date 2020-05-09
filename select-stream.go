@@ -49,6 +49,8 @@ func selectStream(inFilePath string) (context.Context, error) {
 					targetStreamIdx = int(object.Get("index").Int())
 					break
 				}
+			} else {
+				targetStreamIdx = 0
 			}
 		}
 
@@ -80,6 +82,8 @@ func selectStream(inFilePath string) (context.Context, error) {
 					targetStreamIdx = int(object.Get("index").Int())
 					break
 				}
+			} else {
+				targetStreamIdx = 0
 			}
 		}
 

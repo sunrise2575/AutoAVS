@@ -34,7 +34,7 @@ func init() {
 
 	if printVersion {
 		fmt.Println("Auto-encoder")
-		fmt.Println("Version: 1.2.0")
+		fmt.Println("Version: 1.2.1")
 		fmt.Println("Copyright 2020 Heeyong Yoon.")
 		fmt.Println("All Rights Reserved.")
 		os.Exit(0)
@@ -117,6 +117,8 @@ func main() {
 			if e := filepath.Walk(inRootFolder, func(inFilePath string, info os.FileInfo, err error) error {
 				if !info.IsDir() {
 					switch filepath.Ext(inFilePath) {
+					case ".asf":
+						fallthrough
 					case ".mp4":
 						fallthrough
 					case ".mkv":
