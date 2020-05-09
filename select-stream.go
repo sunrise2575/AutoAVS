@@ -49,15 +49,13 @@ func selectStream(inFilePath string) (context.Context, error) {
 					targetStreamIdx = int(object.Get("index").Int())
 					break
 				}
-			} else {
-				targetStreamIdx = 0
 			}
 		}
 
 		if targetStreamIdx != -1 {
 			vStreamIdx = targetStreamIdx
 		} else {
-			vStreamIdx = 0
+			vStreamIdx = int(gjson.GetBytes(ffprobeBSON, "streams").Array()[vIdxs[0]].Get("index").Int())
 		}
 
 		vCodecName = gjson.GetBytes(ffprobeBSON, "streams").Array()[vStreamIdx].Get("codec_name").String()
@@ -82,15 +80,13 @@ func selectStream(inFilePath string) (context.Context, error) {
 					targetStreamIdx = int(object.Get("index").Int())
 					break
 				}
-			} else {
-				targetStreamIdx = 0
 			}
 		}
 
 		if targetStreamIdx != -1 {
 			aStreamIdx = targetStreamIdx
 		} else {
-			aStreamIdx = 0
+			aStreamIdx = int(gjson.GetBytes(ffprobeBSON, "streams").Array()[aIdxs[0]].Get("index").Int())
 		}
 
 		aCodecName = gjson.GetBytes(ffprobeBSON, "streams").Array()[aStreamIdx].Get("codec_name").String()
