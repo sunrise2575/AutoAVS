@@ -33,8 +33,8 @@ func init() {
 	flag.Parse()
 
 	if printVersion {
-		fmt.Println("Auto-encoder")
-		fmt.Println("Version: 1.2.1")
+		fmt.Println("AutoTranscoder")
+		fmt.Println("Version: 1.2.2")
 		fmt.Println("Copyright 2020 Heeyong Yoon.")
 		fmt.Println("All Rights Reserved.")
 		os.Exit(0)
