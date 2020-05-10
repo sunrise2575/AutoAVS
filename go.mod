@@ -1,4 +1,4 @@
-module github.com/sunrise2575/auto-encoder
+module github.com/sunrise2575/AutoTranscoder
 
 go 1.14
 
