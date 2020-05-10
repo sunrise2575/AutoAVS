@@ -1,7 +1,9 @@
-# Auto-Encoder
-Encoding Automation Project (not machine learning!)
+# AutoTranscoder
+Transcoding Automation Project
 
-This project is experimental now. Please be generous for encoding failure.
+This project is experimental now. Please be generous for little failure.
+
+(but I think this program is quite reliable.)
 
 ## Requirements
 ### Related to Language 
@@ -13,11 +15,21 @@ This project is experimental now. Please be generous for encoding failure.
 (Note: the "Max # of concurrent sessions" is fake. GPU can have multiple encoding/decoding session over this limit. This is solved by the following patch)
 - NVIDIA NVENC limitation unlock patch https://github.com/keylase/nvidia-patch (which unlocks NVENC's software limitation of concurrent encoding session. If you don't patch, you can't run multiple session even you have multiple GPUs!)
 
+### Related to Transcoding
+- ffmpeg
+
 ## How to use
-1. You must write down and save `config.json` file on the directory. Video files in the directory will be encoded by ffmpeg parameter loaded from `config.json` file.
-2. The directory can be multiple. This program recursively found `config.json` and video files.
-3. Type command:
+1. Video files in the directory will be encoded by ffmpeg parameter loaded from `config.json` file. The default `config.json` file is included in this package.
+2. This program recursively found video files under the root folder designated by `-in` flag.
+3. Build.
 ```bash
-go build main.go
-./main -r [a root directory of video file directories]
+go build .
+```
+4. Show help.
+```bash
+./AutoTranscoder
+```
+5. Run the program, sit back and watch. For example:
+```bash
+./AutoTranscoder -config ./config.json -in ../myvideo/ -lang jpn -workers 3
 ```
