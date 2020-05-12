@@ -67,7 +67,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 
 	argsCommon := []string{
 		"-hide_banner",
-		"-loglevel", "error",
+		"-loglevel", "warning",
 		"-y",
 		"-threads", "0",
 		"-thread_type", "frame",
@@ -103,7 +103,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 			cmd := exec.Command("ffmpeg", argsVideo...)
 			stdoutStderr, e := cmd.CombinedOutput()
 			if e != nil {
-				result <- fmt.Errorf(e.Error() + string(stdoutStderr))
+				result <- fmt.Errorf("\n" + outFilePathVideo + ",\n" + e.Error() + ",\n" + string(stdoutStderr))
 				return
 			}
 			result <- nil
@@ -138,7 +138,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 			stdoutStderr, e := cmd.CombinedOutput()
 
 			if e != nil {
-				result <- fmt.Errorf(e.Error() + string(stdoutStderr))
+				result <- fmt.Errorf("\n" + outFilePathAudio + ",\n" + e.Error() + ",\n" + string(stdoutStderr))
 				return
 			}
 			result <- nil
@@ -163,9 +163,9 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 		outFilePathMerge}
 
 	cmd := exec.Command("ffmpeg", argsMerge...)
-	stdoutStderr, e := cmd.CombinedOutput()
-	if e != nil {
-		return fmt.Errorf(e.Error() + string(stdoutStderr))
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("\n" + outFilePathMerge + ",\n" + err.Error() + ",\n" + string(stdoutStderr))
 	}
 
 	if e := os.Remove(outFilePathVideo); e != nil {
