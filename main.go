@@ -20,6 +20,8 @@ var (
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// Flags
 	var rootFolder, configPath, lang string
 	var printVersion bool

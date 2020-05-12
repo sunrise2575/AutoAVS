@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 
 	"github.com/tidwall/gjson"
@@ -33,7 +34,7 @@ func selectStream(inFilePath string) (context.Context, error) {
 
 	switch len(vIdxs) {
 	case 0:
-		panic("no video stream!")
+		return nil, fmt.Errorf("no video stream")
 	case 1:
 		object := gjson.GetBytes(ffprobeBSON, "streams").Array()[vIdxs[0]]
 		vStreamIdx = int(object.Get("index").Int())
@@ -64,7 +65,7 @@ func selectStream(inFilePath string) (context.Context, error) {
 
 	switch len(aIdxs) {
 	case 0:
-		panic("no video stream!")
+		return nil, fmt.Errorf("no video stream")
 	case 1:
 		object := gjson.GetBytes(ffprobeBSON, "streams").Array()[aIdxs[0]]
 		aStreamIdx = int(object.Get("index").Int())
