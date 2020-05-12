@@ -182,7 +182,8 @@ func main() {
 					if e := runFFMPEG(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
 						log.Println(myGPUID, p.myInFilePath, "retry", e.Error())
 						if e := runFFMPEGsplit(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-							panic(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
+							log.Println(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
+							continue
 						}
 					}
 
