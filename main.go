@@ -127,6 +127,8 @@ func main() {
 						fallthrough
 					case ".avi":
 						fallthrough
+					case ".m4v":
+						fallthrough
 					case ".wmv":
 						inFilePath, e := filepath.Abs(inFilePath)
 						if e != nil {
