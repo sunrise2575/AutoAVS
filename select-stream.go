@@ -39,6 +39,7 @@ func selectStream(inFilePath string) (context.Context, error) {
 		object := gjson.GetBytes(ffprobeBSON, "streams").Array()[vIdxs[0]]
 		vStreamIdx = int(object.Get("index").Int())
 		vCodecName = object.Get("codec_name").String()
+		vPixFmt = object.Get("pix_fmt").String()
 	default:
 		// select proper stream by language
 		targetStreamIdx := -1
