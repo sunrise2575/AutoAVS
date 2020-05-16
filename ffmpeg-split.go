@@ -37,7 +37,7 @@ func mergeErrorChan(cs ...<-chan error) <-chan error {
 func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error {
 	streamCtx, e := selectStream(inFilePath)
 	if e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	shouldEncodeVideo, shouldEncodeAudio :=
@@ -62,7 +62,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 
 	bson, e := ioutil.ReadFile(configPath)
 	if e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	argsCommon := []string{
@@ -148,7 +148,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 
 	for e := range mergeErrorChan(runVideoChan, runAudioChan) {
 		if e != nil {
-			return e
+			return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 		}
 	}
 
@@ -169,15 +169,25 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 	}
 
 	if e := os.Remove(outFilePathVideo); e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	if e := os.Remove(outFilePathAudio); e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	if e := os.Rename(outFilePathMerge, outFilePath); e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
+	}
+
+	if inFileExt == ".mp4" {
+		if e := os.Rename(inFilePath, inFilePath+".old"); e != nil {
+			return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
+		}
+
+		if e := os.Rename(outFilePath, strings.Replace(outFilePath, "_new.mp4", ".mp4", -1)); e != nil {
+			return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
+		}
 	}
 
 	return nil

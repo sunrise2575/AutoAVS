@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
 	streamCtx, e := selectStream(inFilePath)
 	if e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	shouldEncodeVideo, shouldEncodeAudio :=
@@ -35,7 +36,7 @@ func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
 
 	bson, e := ioutil.ReadFile(configPath)
 	if e != nil {
-		return e
+		return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
 	}
 
 	args := []string{
@@ -77,6 +78,16 @@ func runFFMPEG(inFilePath, configPath, outFileDir string, gpuID int) error {
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("\n" + inFilePath + ",\n" + err.Error() + ",\n" + string(stdoutStderr))
+	}
+
+	if inFileExt == ".mp4" {
+		if e := os.Rename(inFilePath, inFilePath+".old"); e != nil {
+			return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
+		}
+
+		if e := os.Rename(outFilePath, strings.Replace(outFilePath, "_new.mp4", ".mp4", -1)); e != nil {
+			return fmt.Errorf("\n" + inFilePath + ",\n" + e.Error())
+		}
 	}
 
 	return nil
