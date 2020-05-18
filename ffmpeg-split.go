@@ -75,7 +75,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 		"-probesize", "2147483647",
 		"-i", inFilePath,
 		"-threads", "0",
-		"-max_muxing_queue_size", "1024"}
+		"-max_muxing_queue_size", "4096"}
 
 	runVideoChan := func() <-chan error {
 		result := make(chan error, 1)
