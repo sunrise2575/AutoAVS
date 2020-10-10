@@ -62,10 +62,12 @@ func init() {
 	fmt.Println("NVIDIA GPU LIST")
 	for _, device := range devices {
 		if device.Vendor.Name == "NVIDIA Corporation" && !strings.Contains(device.Product.Name, "Audio") {
-			fmt.Printf("%s\t%s\t%s\n", device.Address, device.Vendor.Name, device.Product.Name)
+			fmt.Println(device)
 			nvidiaGPUs++
 		}
 	}
+
+	//nvidiaGPUs--
 
 	ctx = context.WithValue(ctx, "input_root_folder_path", rootFolder)
 	ctx = context.WithValue(ctx, "config_path", configPath)
@@ -137,18 +139,6 @@ func main() {
 						}
 
 						inFileDir, _ := filepath.Split(inFilePath)
-						/*
-							configPath := filepath.Join(inFileDir, "config.json")
-							if _, e := os.Stat(configPath); os.IsNotExist(e) {
-								log.Println(inFilePath, e.Error(), "skip")
-								return nil
-							}
-
-							if _, e := os.Stat(outFileDir); os.IsNotExist(e) {
-								log.Println(outFileDir, e.Error(), "skip")
-								return nil
-							}
-						*/
 
 						result <- fParam{
 							myInFilePath: inFilePath,
@@ -181,13 +171,15 @@ func main() {
 				for p := range in {
 					log.Println(myGPUID, p.myInFilePath, "start")
 
-					if e := runFFMPEG(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-						log.Println(myGPUID, p.myInFilePath, "retry", e.Error())
-						if e := runFFMPEGsplit(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-							log.Println(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
-							continue
-						}
+					// original version has ffmpeg-based issue. split and merge is safer
+					//if e := runFFMPEG(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
+					//log.Println(myGPUID, p.myInFilePath, "retry", e.Error())
+					if e := runFFMPEGsplit(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
+						log.Println(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
+						fmt.Scanln()
+						continue
 					}
+					//}
 
 					log.Println(myGPUID, p.myInFilePath, "success")
 				}

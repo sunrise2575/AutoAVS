@@ -55,9 +55,9 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 
 	var outFilePath string
 	if inFileExt == ".mp4" {
-		outFilePath = filepath.Join(outFileDir, inFileExt+"_new.mp4")
+		outFilePath = filepath.Join(outFileDir, inFileName+"_new.mp4")
 	} else {
-		outFilePath = filepath.Join(outFileDir, inFileExt+".mp4")
+		outFilePath = filepath.Join(outFileDir, inFileName+".mp4")
 	}
 
 	bson, e := ioutil.ReadFile(configPath)
@@ -82,7 +82,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 		go func() {
 			defer close(result)
 
-			argsVideo := []string{}
+			argsVideo := make([]string, len(argsCommon))
 			copy(argsVideo, argsCommon)
 
 			argsVideo = append(argsVideo, "-map", "0:"+strconv.Itoa(vStreamIdx))
@@ -117,7 +117,7 @@ func runFFMPEGsplit(inFilePath, configPath, outFileDir string, gpuID int) error 
 		go func() {
 			defer close(result)
 
-			argsAudio := []string{}
+			argsAudio := make([]string, len(argsCommon))
 			copy(argsAudio, argsCommon)
 
 			argsAudio = append(argsAudio, "-map", "0:"+strconv.Itoa(aStreamIdx))
