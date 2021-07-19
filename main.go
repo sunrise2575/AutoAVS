@@ -1,65 +1,36 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/jaypipes/ghw"
+	"github.com/sunrise2575/AutoAVS/filesys"
+	"github.com/sunrise2575/AutoAVS/media"
+	"github.com/tidwall/gjson"
 )
 
-var (
-	ctx = context.Background()
-)
-
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	// Flags
-	var rootFolder, configPath, lang string
-	var printVersion bool
-	var workersPerGPU int
-
-	flag.StringVar(&rootFolder, "in", "", "Root path for input files")
-	flag.StringVar(&configPath, "config", "./config.json", "Config file path.")
-	flag.BoolVar(&printVersion, "v", false, "Print program version")
-	flag.IntVar(&workersPerGPU, "workers", 2, "Workers per GPU. If you have good GPU, it's okay to raise this value up to 4~6. If you have normal GPU, just set this value within 2~3.")
-	flag.StringVar(&lang, "lang", "jpn", "Preferred audio/video language stream.")
-	flag.Parse()
-
-	if printVersion {
-		fmt.Println("AutoTranscoder")
-		fmt.Println("Version: 1.2.2")
-		fmt.Println("Copyright 2020 Heeyong Yoon.")
-		fmt.Println("All Rights Reserved.")
-		os.Exit(0)
-	}
-
-	if rootFolder == "" {
-		fmt.Println("You should provide a root path of videos.")
-		flag.Usage()
-		os.Exit(1)
-	}
-
+// CheckGPU ...
+func checkNvidiaGPU() (int, error) {
 	pci, e := ghw.PCI()
 	if e != nil {
-		panic(e)
+		return -1, e
 	}
 
 	devices := pci.ListDevices()
 	if len(devices) == 0 {
-		panic("no PCI devices!")
+		return -1, fmt.Errorf("no PCI devices in your computer")
 	}
 
 	nvidiaGPUs := 0
-	fmt.Println("NVIDIA GPU LIST")
 	for _, device := range devices {
 		if device.Vendor.Name == "NVIDIA Corporation" && !strings.Contains(device.Product.Name, "Audio") {
 			fmt.Println(device)
@@ -67,124 +38,139 @@ func init() {
 		}
 	}
 
-	//nvidiaGPUs--
+	return nvidiaGPUs, nil
+}
 
-	ctx = context.WithValue(ctx, "input_root_folder_path", rootFolder)
-	ctx = context.WithValue(ctx, "config_path", configPath)
-	ctx = context.WithValue(ctx, "language", lang)
-	ctx = context.WithValue(ctx, "nvidia_gpu_count", nvidiaGPUs)
-	ctx = context.WithValue(ctx, "workers_per_gpu", workersPerGPU)
+func readJSONFile(filePath string) (gjson.Result, error) {
+	b, e := ioutil.ReadFile(filePath)
+	if e != nil {
+		return gjson.Result{}, e
+	}
+	return gjson.ParseBytes(b), nil
 }
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println(r)
-		}
-	}()
+	inFolderPath, configPath := "", ""
+	workersPerGPU := 0
 
-	inRootFolder, e := filepath.Abs(ctxString(ctx, "input_root_folder_path"))
+	flag.StringVar(&inFolderPath, "root", "", "Root path for input files")
+	flag.StringVar(&configPath, "config", "", "Config file path.")
+	flag.IntVar(&workersPerGPU, "worker", 1, "Workers Per GPU")
+	flag.Parse()
+
+	if len(inFolderPath) == 0 || len(configPath) == 0 {
+		flag.Usage()
+		log.Fatalf("[fatal] You should provide a root path and config path of videos.")
+	}
+
+	// Get input parameters from program flags
+	inFolderPath = filesys.PathBeautify(inFolderPath)
+	configPath = filesys.PathBeautify(configPath)
+
+	// Read config file
+	config, e := readJSONFile(configPath)
 	if e != nil {
-		panic(e)
-	}
-	if _, e = os.Stat(inRootFolder); os.IsNotExist(e) {
-		panic(e)
+		log.Fatalf("[fatal] %v\n", e.Error())
 	}
 
-	configPath, e := filepath.Abs(ctxString(ctx, "config_path"))
+	if e := media.CheckConfigSanity(config); e != nil {
+		log.Fatalf("[fatal] %v\n", e.Error())
+	}
+
+	// Count NVIDIA devices (but doesn't check NVENC capability)
+	nvidiaGPUCount, e := checkNvidiaGPU()
 	if e != nil {
-		panic(e)
+		log.Fatalf("[fatal] %v\n", e.Error())
+	}
+	if nvidiaGPUCount <= 0 {
+		log.Println("[info] Your system does not have NVIDIA NVENC capable GPUs. Proceed to use only CPU")
 	}
 
-	if _, e = os.Stat(inRootFolder); os.IsNotExist(e) {
-		panic(e)
+	// Convert array to map for extension lookup
+	inputExtension := make(map[string]struct{})
+	for _, v := range config.Get("input.extension").Array() {
+		inputExtension[v.String()] = struct{}{}
 	}
 
-	gpuCount := ctxInt(ctx, "nvidia_gpu_count")
-	workersPerGPU := ctxInt(ctx, "workers_per_gpu")
+	log.Printf(`[info] start transcoding process for folder "%v" using query "%v"`, inFolderPath, configPath)
 
-	type fParam struct {
-		myInFilePath, myConfigPath, myOutFileDir string
-	}
+	elapsedStart := time.Now()
+	erroredFiles, completeFiles := int64(0), int64(0)
 
-	// producer
-	fparamq := func() <-chan fParam {
-		result := make(chan fParam, 128)
-		go func() {
-			defer func() {
-				close(result)
-				if r := recover(); r != nil {
-					log.Println(r)
-				}
-			}()
+	// Producer
+	jobChan := make(chan string, 128)
 
-			if e := filepath.Walk(inRootFolder, func(inFilePath string, info os.FileInfo, err error) error {
-				if !info.IsDir() {
-					switch filepath.Ext(inFilePath) {
-					case ".asf":
-						fallthrough
-					case ".mp4":
-						fallthrough
-					case ".mkv":
-						fallthrough
-					case ".avi":
-						fallthrough
-					case ".m4v":
-						fallthrough
-					case ".wmv":
-						inFilePath, e := filepath.Abs(inFilePath)
-						if e != nil {
-							log.Println(inFilePath, e.Error(), "skip")
-							return nil
-						}
-
-						inFileDir, _ := filepath.Split(inFilePath)
-
-						result <- fParam{
-							myInFilePath: inFilePath,
-							myConfigPath: configPath,
-							myOutFileDir: inFileDir,
-						}
+	go func() {
+		defer close(jobChan)
+		filepath.Walk(inFolderPath, func(inFilePath string, info os.FileInfo, err error) error {
+			// If selected path is file
+			if !info.IsDir() {
+				// If file extension is right ([1:] is for removing dot from Golang's file extension name)
+				if _, ok := inputExtension[filepath.Ext(inFilePath)[1:]]; ok {
+					_, name, _ := filesys.PathSplit(inFilePath)
+					if len(name) > 0 && name[0] == '.' {
+						return nil
 					}
+
+					jobChan <- inFilePath
 				}
-				return nil
-			}); e != nil {
-				panic(e)
 			}
-		}()
-		return result
+			return nil
+		})
 	}()
 
-	// consumer
-	func() {
+	// Consumer
+	{
 		var wg sync.WaitGroup
-		for wID := 0; wID < gpuCount*workersPerGPU; wID++ {
-			wg.Add(1)
-			go func(myGPUID int, in <-chan fParam) {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Println(r)
+		if nvidiaGPUCount > 0 {
+			for workerID := 0; workerID < nvidiaGPUCount*workersPerGPU; workerID++ {
+				wg.Add(1)
+				go func(workerID int, inChan <-chan string) {
+					defer wg.Done()
+
+					gpuID := workerID / workersPerGPU
+
+					for inFilePath := range inChan {
+						log.Printf(`[info][worker %v @ GPU %v] "%v" start`, workerID, gpuID, inFilePath)
+						if e := media.Transcode(inFilePath, config, gpuID); e != nil {
+							log.Printf(`[error][worker %v @ GPU %v] "%v" error, %v`, workerID, gpuID, inFilePath, e.Error())
+							atomic.AddInt64(&erroredFiles, 1)
+						} else {
+							log.Printf(`[info][worker %v @ GPU %v] "%v" finished`, workerID, gpuID, inFilePath)
+							atomic.AddInt64(&completeFiles, 1)
+						}
 					}
-					wg.Done()
-				}()
+				}(workerID, jobChan)
+			}
+		} else {
+			for workerID := 0; workerID < workersPerGPU; workerID++ {
+				wg.Add(1)
+				go func(workerID int, inChan <-chan string) {
+					defer wg.Done()
 
-				for p := range in {
-					log.Println(myGPUID, p.myInFilePath, "start")
-
-					// original version has ffmpeg-based issue. split and merge is safer
-					//if e := runFFMPEG(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-					//log.Println(myGPUID, p.myInFilePath, "retry", e.Error())
-					if e := runFFMPEGsplit(p.myInFilePath, p.myConfigPath, p.myOutFileDir, myGPUID); e != nil {
-						log.Println(fmt.Sprintln(myGPUID, p.myInFilePath, "fail", e.Error()))
-						fmt.Scanln()
-						continue
+					for inFilePath := range inChan {
+						log.Printf(`[info][worker %v @ CPU] "%v" start`, workerID, inFilePath)
+						if e := media.Transcode(inFilePath, config, -1); e != nil {
+							log.Printf(`[error][worker %v @ CPU] "%v" error, %v`, workerID, inFilePath, e.Error())
+							atomic.AddInt64(&erroredFiles, 1)
+						} else {
+							log.Printf(`[info][worker %v @ CPU] "%v" finished`, workerID, inFilePath)
+							atomic.AddInt64(&completeFiles, 1)
+						}
 					}
-					//}
-
-					log.Println(myGPUID, p.myInFilePath, "success")
-				}
-			}(wID%gpuCount, fparamq)
+				}(workerID, jobChan)
+			}
 		}
+
 		wg.Wait()
-	}()
+	}
+
+	elapsedTime := time.Since(elapsedStart)
+	totalFiles := erroredFiles + completeFiles
+	log.Printf(`[info] complete transcoding process for folder "%v" using query "%v"`, inFolderPath, configPath)
+	log.Printf(`[info] total elapsed time: %v, complete file: %v (%.3f%%), errored file: %v (%.3f%%), total file: %v`,
+		elapsedTime,
+		completeFiles, 100*float32(completeFiles)/float32(totalFiles),
+		erroredFiles, 100*float32(erroredFiles)/float32(totalFiles),
+		totalFiles)
 }

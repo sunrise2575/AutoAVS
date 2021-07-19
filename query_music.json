@@ -1,0 +1,19 @@
+{
+    "input": {
+        "extension": ["mp3", "ogg", "opus", "mka", "wav", "flac"]
+    },
+    "output": {
+        "stream": [{
+            "codec_type": "audio",
+            "copy_if": {
+                "codec_name": "^(opus)$"
+            },
+            "ffmpeg_parameter": {
+                "c": "libopus",
+                "b": "128k"
+            },
+            "temp_file_extension": "ogg"
+        }],
+        "extension": "ogg"
+    }
+}

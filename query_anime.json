@@ -1,0 +1,50 @@
+{
+    "input": {
+        "extension": ["asf", "avi", "bik", "flv", "mkv", "mov", "mp4", "mpeg", "3gp", "ts", "webm", "wmv"]
+    },
+    "output": {
+        "stream": [{
+                "codec_type": "video",
+                "select_if": {
+                    "tags": {
+                        "language": "^(jpn|und)$",
+                        "title": "(?i)^(?!.*comment).*$"
+                    }
+                },
+                "copy_if": {
+                    "codec_name": "^(hevc)$",
+                    "pix_fmt": "^(yuv420p)$"
+                },
+                "ffmpeg_parameter": {
+                    "c": "hevc_nvenc",
+                    "pix_fmt": "yuv420p",
+                    "profile": "main",
+                    "level": "auto",
+                    "preset": "hq",
+                    "qp": "25"
+                },
+                "temp_file_extension": "mkv"
+            },
+            {
+                "codec_type": "audio",
+                "select_if": {
+                    "channels": 2,
+                    "tags": {
+                        "language": "^(jpn|und)$",
+                        "title": "(?i)^(?!.*comment).*$"
+                    }
+                },
+                "select_priority": ["tags.title", "tags.language"],
+                "copy_if": {
+                    "codec_name": "^(aac|vorbis|opus)$"
+                },
+                "ffmpeg_parameter": {
+                    "c": "libopus",
+                    "b": "128k"
+                },
+                "temp_file_extension": "mka"
+            }
+        ],
+        "extension": "mkv"
+    }
+}
