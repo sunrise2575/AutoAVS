@@ -5,7 +5,7 @@
     "output": {
         "stream": [{
                 "codec_type": "video",
-                "select_if": {
+                "select_prefer": {
                     "tags": {
                         "language": "^(jpn|und)$",
                         "title": "(?i)^(?!.*comment).*$"
@@ -27,7 +27,7 @@
             },
             {
                 "codec_type": "audio",
-                "select_if": {
+                "select_prefer": {
                     "channels": 2,
                     "tags": {
                         "language": "^(jpn|und)$",

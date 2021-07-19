@@ -92,7 +92,7 @@ func selectStream(arg commonArgType, mediaMetaJSON gjson.Result) map[string]tran
 		temp := -1
 
 		currentJSON := arg.queryJSON[codecType]
-		queryJSON := currentJSON.Get("select_if")
+		queryJSON := currentJSON.Get("select_prefer")
 
 		if len(metaJSONArray) > 1 && queryJSON.Exists() {
 			// the input media have multiple stream of same type and the user specifies the stream information

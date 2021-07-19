@@ -75,7 +75,7 @@ The automated audio, video, subtitle tool. Currently audio and video is supporte
                     // This example means that:
                     //   The 1st stream will be video
 
-                    // You can omit "select_if" and "select_priority"
+                    // You can omit "select_prefer" and "select_priority"
                     // Which means that you choose 0-th video stream whatever it is
 
                     // You can write "copy_if" here
@@ -113,7 +113,7 @@ The automated audio, video, subtitle tool. Currently audio and video is supporte
                     //   The 2nd stream will be audio
 
 
-                    "select_if": {
+                    "select_prefer": {
                         // in this section, you can write regex JSON compare query
                         // regex is combined golang-optional regex and perl regex
 
@@ -165,7 +165,7 @@ The automated audio, video, subtitle tool. Currently audio and video is supporte
     }
     ```
 
-    Note: `"codec_type"`, `"select_if"` and `"copy_if"` compares its value to the result of following command:
+    Note: `"codec_type"`, `"select_prefer"` and `"copy_if"` compares its value to the result of following command:
 
     ```bash
       ffprobe -v quiet -print_format json -show_streams <filename>

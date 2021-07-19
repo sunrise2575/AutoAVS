@@ -60,14 +60,14 @@ func CheckConfigSanity(queryJSON gjson.Result) error {
 
 		for _, streamJSON := range queryJSON.Get("output.stream").Array() {
 			_checkSanityValue(streamJSON, "codec_type", gjson.String)
-			if queryJSON.Get("select_if").Exists() {
-				_checkSanityValue(streamJSON, "select_if", gjson.JSON)
+			if queryJSON.Get("select_prefer").Exists() {
+				_checkSanityValue(streamJSON, "select_prefer", gjson.JSON)
 				if queryJSON.Get("select_priority").Exists() {
 					_checkSanityValue(streamJSON, "select_priority", gjson.JSON)
 				}
 			} else {
 				if queryJSON.Get("select_priority").Exists() {
-					panic(`"select_priority" should not exist without "select_if"`)
+					panic(`"select_priority" should not exist without "select_prefer"`)
 				}
 			}
 			if queryJSON.Get("copy_if").Exists() {
