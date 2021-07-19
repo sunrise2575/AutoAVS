@@ -47,8 +47,6 @@ func Transcode(inPath string, configJSON gjson.Result, gpuID int) error {
 	arg.info = selectStream(arg, mediaMetaJSON)
 	arg.mutex = &sync.Mutex{}
 
-	fmt.Println(arg.info)
-
 	if e = decideStreamTranscodeRequired(&arg); e != nil {
 		return e
 	}
