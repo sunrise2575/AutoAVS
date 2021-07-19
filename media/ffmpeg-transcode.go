@@ -40,7 +40,6 @@ func runFFMpegTranscode(arg commonArgType, codecType string, gpuID int) error {
 		if codecType == "video" && gpuID >= 0 {
 			args = append(args, []string{"-gpu", strconv.Itoa(gpuID)}...)
 		}
-
 		for k, v := range arg.queryJSON[codecType].Get("ffmpeg_parameter").Map() {
 			switch codecType {
 			case "video":
@@ -50,6 +49,13 @@ func runFFMpegTranscode(arg commonArgType, codecType string, gpuID int) error {
 			case "subtitle":
 				args = append(args, []string{"-" + k + ":s", v.String()}...)
 			}
+		}
+	} else {
+		switch codecType {
+		case "video":
+			args = append(args, "-c:v", "copy")
+		case "audio":
+			args = append(args, "-c:a", "copy")
 		}
 	}
 

@@ -68,7 +68,7 @@ func flushFiles(arg commonArgType, configJSON gjson.Result) error {
 
 	originFolder, originName, originExt := filesys.PathSplit(arg.inPath)
 	for _, each := range arg.info {
-		if _, e0 := os.Stat(each.outPath()); os.IsExist(e0) {
+		if _, e0 := os.Stat(each.outPath()); e0 == nil {
 			if e1 := os.Remove(each.outPath()); e1 != nil {
 				return e1
 			}
