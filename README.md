@@ -54,7 +54,7 @@ The automated audio, video, subtitle tool. Currently audio and video is supporte
 
 1. Write down the query in `*.json` file. Your all video/audio files under the selected directory will be processed by this query. The default `query_*.json` files are included in this package. The query is designed like:
 
-    ```json
+    ```
     {
         // "input" section
         "input": {
