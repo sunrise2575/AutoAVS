@@ -182,7 +182,7 @@ The automated audio, video, subtitle tool. Currently audio and video is supporte
 
 ## Note
 
-- This program has been developed for my personal usage. Please be generous for little failure. (But I personally think the program is quite reliable.) You can submit some push request for fixing bugs and helping me.
+- This program has been developed for my personal usage. Please be generous for little failure. (But I personally think the program is quite reliable.) You can submit some pull request for fixing bugs and helping me.
 
 - Also, you can fork my repostory, but please notify me when not using this program in personal way (e.g. commercial use, integrate to open source module, ...).
 
