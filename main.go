@@ -103,18 +103,42 @@ func main() {
 	go func() {
 		defer close(jobChan)
 		filepath.Walk(inFolderPath, func(inFilePath string, info os.FileInfo, err error) error {
-			// If selected path is file
-			if !info.IsDir() {
-				// If file extension is right ([1:] is for removing dot from Golang's file extension name)
-				if _, ok := inputExtension[filepath.Ext(inFilePath)[1:]]; ok {
-					_, name, _ := filesys.PathSplit(inFilePath)
-					if len(name) > 0 && name[0] == '.' {
-						return nil
-					}
-
-					jobChan <- inFilePath
-				}
+			// exclude if selected path is not file
+			if info.IsDir() {
+				return nil
 			}
+
+			// exclude if the selected file has no extension
+			if len(filepath.Ext(inFilePath)) < 2 {
+				return nil
+			}
+
+			// exclude if the file's extension is not in the list that we want to target
+			if _, ok := inputExtension[filepath.Ext(inFilePath)[1:]]; !ok {
+				return nil
+			}
+
+			// split the path three way
+			folder, name, _ := filesys.PathSplit(inFilePath)
+
+			// transcoded file leaves dot-prefix named file
+			// therefore, exclude if the file is a dot-prefix named file
+			if len(name) > 0 && name[0] == '.' {
+				return nil
+			}
+
+			// transcoded file leaves dot-prefix named file
+			// therefore, exclude if the file has already left a dot-prefix named file
+			dotPrefixNamedRegex := filepath.Join(folder, "."+name) + ".*"
+			matches, _ := filepath.Glob(dotPrefixNamedRegex)
+			if len(matches) > 0 {
+				return nil
+			}
+
+			// if the file is alright, insert the file in the queue
+			jobChan <- inFilePath
+
+			// leave lambda function
 			return nil
 		})
 	}()
