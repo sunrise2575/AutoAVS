@@ -1,0 +1,51 @@
+{
+    "input": {
+        "extension": ["asf", "avi", "bik", "flv", "mkv", "mov", "mp4", "mpeg", "3gp", "ts", "webm", "wmv"]
+    },
+    "output": {
+        "stream": [{
+                "codec_type": "video",
+                "select_prefer": {
+                    "tags": {
+                        "language": "^(jpn|und)$",
+                        "title": "(?i)^(?!.*comment).*$"
+                    }
+                },
+                "copy_if": {
+                    "codec_name": "^(vp9)$",
+                    "pix_fmt": "^(yuv420p)$"
+                },
+                "ffmpeg_parameter": {
+                    "c": "libvpx-vp9",
+		    "threads": "8",
+		    "row-mt": "1",
+		    "cpu-used": "4",
+		    "b": "0",
+		    "pix_fmt": "yuv420p",
+		    "crf": "27"
+                },
+                "temp_file_extension": "mkv"
+            },
+            {
+                "codec_type": "audio",
+                "select_prefer": {
+                    "channels": 2,
+                    "tags": {
+                        "language": "^(jpn|und)$",
+                        "title": "(?i)^(?!.*comment).*$"
+                    }
+                },
+                "select_priority": ["tags.title", "tags.language"],
+                "copy_if": {
+                    "codec_name": "^(vorbis|opus)$"
+                },
+                "ffmpeg_parameter": {
+                    "c": "libopus",
+                    "b": "128k"
+                },
+                "temp_file_extension": "mka"
+            }
+        ],
+        "extension": "webm"
+    }
+}

@@ -1,6 +1,6 @@
 {
     "input": {
-        "extension": ["mp3", "ogg", "opus", "mka", "wav", "flac"]
+        "extension": ["m4a", "mp3", "ogg", "opus", "mka", "wav", "flac"]
     },
     "output": {
         "stream": [{

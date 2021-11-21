@@ -1,0 +1,16 @@
+{
+    "input": {
+        "extension": ["m4a", "mp3", "opus", "mka", "wav", "flac"]
+    },
+    "output": {
+        "stream": [{
+            "codec_type": "audio",
+            "ffmpeg_parameter": {
+                "c": "libmp3lame",
+                "qscale": "3"
+            },
+            "temp_file_extension": "mp3"
+        }],
+        "extension": "mp3"
+    }
+}
