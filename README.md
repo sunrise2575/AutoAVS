@@ -1,3 +1,7 @@
+This repository is no longer maintained.
+
+Use https://github.com/sunrise2575/dist-ffmpeg instead. Thanks.
+
 # AutoAVS
 
 The automated audio, video, subtitle tool. Currently audio and video is supported.
